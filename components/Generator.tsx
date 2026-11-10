@@ -3,11 +3,15 @@
 import { useState } from "react";
 import type { Lesson } from "@/lib/types";
 import { LANGUAGES, type Language, type Script } from "@/lib/languages";
+import { generateReading } from "@/lib/ai";
+import { MissingKeyError, getApiKey } from "@/lib/gemini";
+import ProgressBar from "./ProgressBar";
 
 type Props = {
     language: Language;
     onGenerated: (lesson: Lesson) => void;
     onBack: () => void;
+    onNeedKey: () => void;
 };
 
 const pill = (active: boolean) =>
@@ -16,30 +20,33 @@ const pill = (active: boolean) =>
         : "border-white/15 text-[#c6beb6] hover:bg-white/5"
     }`;
 
-export default function Generator({ language, onGenerated, onBack }: Props) {
+export default function Generator({ language, onGenerated, onBack, onNeedKey }: Props) {
     const cfg = LANGUAGES[language];
     const [topic, setTopic] = useState("");
     const [level, setLevel] = useState<string>(cfg.defaultLevel);
     const [script, setScript] = useState<Script>("traditional");
     const [loading, setLoading] = useState(false);
+    const [done, setDone] = useState(false);
     const [error, setError] = useState("");
 
     async function generate() {
         if (!topic.trim() || loading) return;
+        if (!getApiKey()) {
+            setError("Add your Gemini API key first.");
+            onNeedKey();
+            return;
+        }
         setLoading(true);
+        setDone(false);
         setError("");
         try {
-            const res = await fetch("/api/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ topic, level, language, script }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? "Something went wrong");
-            onGenerated(data as Lesson);
+            const lesson = await generateReading(topic.trim(), level, language, script);
+            setDone(true); // bar jumps to 100%
+            await new Promise((r) => setTimeout(r, 600));
+            onGenerated(lesson); // page then starts the analysis automatically
         } catch (e) {
+            if (e instanceof MissingKeyError) onNeedKey();
             setError(e instanceof Error ? e.message : "Something went wrong");
-        } finally {
             setLoading(false);
         }
     }
@@ -54,7 +61,7 @@ export default function Generator({ language, onGenerated, onBack }: Props) {
             </p>
             <h1 className="mt-2 font-serif text-3xl">Generate a reading</h1>
             <p className="mt-2 text-sm text-[#aaa19a]">
-                Pick a topic and level. Vocabulary, grammar and questions are created with it.
+                Pick a topic and level. The text is written first, then the study notes are added automatically.
             </p>
 
             <input
@@ -87,12 +94,23 @@ export default function Generator({ language, onGenerated, onBack }: Props) {
 
             {error && <p className="mt-4 text-sm text-[#e7a093]">{error}</p>}
 
-            <button
-                onClick={generate}
-                disabled={!topic.trim() || loading}
-                className="lire-primary-button mt-6 disabled:opacity-40"
-            >
-                {loading ? "Writing your reading…" : "Generate reading"}      </button>
+            {loading ? (
+                <div className="mt-6">
+                    <ProgressBar label={done ? "Reading ready" : "Writing your reading…"} done={done} />
+                    <p className="mt-3 text-xs text-[#aaa19a]">
+                        Translation, vocabulary, grammar and word notes will be prepared
+                        automatically next.
+                    </p>
+                </div>
+            ) : (
+                <button
+                    onClick={generate}
+                    disabled={!topic.trim()}
+                    className="lire-primary-button mt-6 w-full disabled:opacity-40 sm:w-auto"
+                >
+                    Generate reading
+                </button>
+            )}
         </div>
     );
 }

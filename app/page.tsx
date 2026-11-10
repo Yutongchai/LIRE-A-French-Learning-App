@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import Composer from "@/components/Composer";
 import Generator from "@/components/Generator";
 import ReadingArticle from "@/components/ReadingArticle";
+import ApiKeyDialog from "@/components/ApiKeyDialog";
 
 export default function Home() {
   const {
@@ -28,6 +29,7 @@ export default function Home() {
   const [showComposer, setShowComposer] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [keyOpen, setKeyOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newText, setNewText] = useState("");
 
@@ -71,6 +73,8 @@ export default function Home() {
     addLesson(lesson);
     setSelectedId(lesson.id);
     setShowGenerator(false);
+    // step 2 runs on its own: translation, vocabulary, word notes, grammar, quiz
+    analyzeLesson(lesson);
   }
 
   function selectLesson(id: string) {
@@ -132,6 +136,14 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setKeyOpen(true)}
+              aria-label="Gemini API key"
+              title="Gemini API key"
+              className="rounded-full border border-white/15 px-3 py-2 text-sm text-[#f2eee7] hover:bg-white/5"
+            >
+              🔑
+            </button>
+            <button
               onClick={() => setLibraryOpen(true)}
               className="rounded-full border border-white/15 px-4 py-2 text-sm text-[#f2eee7] lg:hidden"
             >
@@ -154,6 +166,7 @@ export default function Home() {
               language={language}
               onGenerated={handleGenerated}
               onBack={() => setShowGenerator(false)}
+              onNeedKey={() => setKeyOpen(true)}
             />
           ) : showComposer ? (
             <Composer
@@ -174,7 +187,7 @@ export default function Home() {
                   </p>
                   <h1
                     className={`mt-2 text-3xl sm:text-4xl ${
-                      language === "zh" ? "font-zh" : "font-serif"
+                      language === "zh" ? "font-zh" : language === "th" ? "font-th" : "font-serif"
                     }`}
                   >
                     {cfg.headline}
@@ -205,6 +218,7 @@ export default function Home() {
                   isCompleted={completed.includes(activeLesson.id)}
                   onToggleSaved={() => toggleSaved(activeLesson.id)}
                   onAnalyze={() => analyzeLesson(activeLesson)}
+                  onOpenKey={() => setKeyOpen(true)}
                   onToggleCompleted={() => toggleCompleted(activeLesson.id)}
                 />
               ) : (
@@ -222,6 +236,8 @@ export default function Home() {
           )}
         </section>
       </div>
+
+      {keyOpen && <ApiKeyDialog onClose={() => setKeyOpen(false)} />}
 
       {/* Phone library bottom sheet */}
       {libraryOpen && (

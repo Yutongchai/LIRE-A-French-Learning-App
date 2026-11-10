@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Lesson } from "@/lib/types";
 import VocabularySection from "./reading/VocabularySection";
 import GrammarSection from "./reading/GrammarSection";
 import PracticeSection from "./reading/PracticeSection";
 import { LANGUAGES } from "@/lib/languages";
-import RubyText from "./RubyText";
+import WordText from "./WordText";
+import ProgressBar from "./ProgressBar";
+import type { GlossaryItem } from "@/lib/types";
 
 type Props = {
     lesson: Lesson;
@@ -15,6 +17,7 @@ type Props = {
     onToggleSaved: () => void;
     onToggleCompleted: () => void;
     onAnalyze: () => void;
+    onOpenKey: () => void;
 };
 
 export default function ReadingArticle({
@@ -24,12 +27,28 @@ export default function ReadingArticle({
     onToggleSaved,
     onToggleCompleted,
     onAnalyze,
+    onOpenKey,
 }: Props) {
     const status = lesson.analysis ?? (lesson.vocabulary.length ? "ready" : "none");
     const [showTranslation, setShowTranslation] = useState(false);
     const [showPinyin, setShowPinyin] = useState(false);
     const cfg = LANGUAGES[lesson.language];
     const isZh = lesson.language === "zh";
+    const isTh = lesson.language === "th";
+    const hasReadingToggle = isZh || isTh;
+
+    // glossary first, then vocabulary as a fallback (starter lessons only have vocabulary)
+    const glossary = useMemo<GlossaryItem[]>(
+        () => [
+            ...(lesson.glossary ?? []),
+            ...lesson.vocabulary.map((v) => ({
+                word: v.word,
+                reading: v.reading ?? v.pinyin,
+                meaning: v.meaning,
+            })),
+        ],
+        [lesson.glossary, lesson.vocabulary]
+    );
 
     return (
         <article id="daily-reading" className="lire-article">
@@ -65,21 +84,40 @@ export default function ReadingArticle({
                             : "zh-Hant"
                         : lesson.language
                 }
-                className={`max-w-3xl whitespace-pre-line text-[#46453e] ${isZh
+                className={`max-w-3xl whitespace-pre-line break-words text-[#46453e] ${isZh
                         ? "font-zh text-lg leading-[2.1] sm:text-xl sm:leading-[2.3]"
-                        : "font-serif text-base leading-[2] sm:text-lg sm:leading-[2.1]"
+                        : isTh
+                            ? "font-th text-lg leading-[2.1] sm:text-xl sm:leading-[2.2]"
+                            : "font-serif text-base leading-[2] sm:text-lg sm:leading-[2.1]"
                     }`}
             >
-                {isZh ? <RubyText text={lesson.content} show={showPinyin} /> : lesson.content}
+                <WordText
+                    text={lesson.content}
+                    language={lesson.language}
+                    glossary={glossary}
+                    showReading={showPinyin}
+                    readingLabel={cfg.readingLabel}
+                />
             </div>
 
-            {isZh && (
+            {glossary.length > 0 && (
+                <p className="mt-3 text-xs text-[#9a958b]">
+                    <span className="hidden sm:inline">Hover</span>
+                    <span className="sm:hidden">Tap</span> a{" "}
+                    <span className="lire-word-hint">underlined word</span> to see its meaning
+                    {lesson.language === "fr" || isZh || isTh ? " and pronunciation" : ""}.
+                </p>
+            )}
+
+            {hasReadingToggle && (
                 <div className="mt-4">
                     <button
                         onClick={() => setShowPinyin(!showPinyin)}
                         className="py-2 text-sm font-medium text-[#71816c] hover:underline"
                     >
-                        {showPinyin ? "Hide pinyin ↑" : "Show pinyin ↓"}
+                        {showPinyin
+                            ? `Hide ${cfg.readingLabel.toLowerCase()} ↑`
+                            : `Show ${cfg.readingLabel.toLowerCase()} ↓`}
                     </button>
                 </div>
             )}
@@ -111,21 +149,33 @@ export default function ReadingArticle({
             ) : (
                 <div className="mt-10 rounded-lg bg-[#f8f7f3] p-5 text-sm text-[#77756c]">
                     {status === "pending" ? (
-                        <p className="animate-pulse">
-                            Preparing translation, vocabulary, grammar and questions… you can
-                            keep reading.
-                        </p>
+                        <div>
+                            <ProgressBar label="Preparing translation, vocabulary, grammar and word notes…" />
+                            <p className="mt-3 text-xs">You can keep reading while this finishes.</p>
+                        </div>
                     ) : (
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <span>
-                                {status === "error" ? "Analysis failed." : "No study notes yet."}
+                            <span className="min-w-0 flex-1 basis-60">
+                                {status === "error"
+                                    ? lesson.analysisError ?? "Analysis failed."
+                                    : "No study notes yet."}
                             </span>
-                            <button
-                                onClick={onAnalyze}
-                                className="rounded-lg bg-[#465642] px-4 py-2 text-white hover:bg-[#34432f]"
-                            >
-                                {status === "error" ? "Retry" : "Analyze this reading"}
-                            </button>
+                            <div className="flex w-full gap-2 sm:w-auto">
+                                {status === "error" && /API key/i.test(lesson.analysisError ?? "") && (
+                                    <button
+                                        onClick={onOpenKey}
+                                        className="flex-1 rounded-lg border border-[#465642] px-4 py-2 text-[#465642] sm:flex-none"
+                                    >
+                                        Set API key
+                                    </button>
+                                )}
+                                <button
+                                    onClick={onAnalyze}
+                                    className="flex-1 rounded-lg bg-[#465642] px-4 py-2 text-white hover:bg-[#34432f] sm:flex-none"
+                                >
+                                    {status === "error" ? "Retry" : "Analyze this reading"}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

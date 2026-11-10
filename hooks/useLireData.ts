@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Lesson } from "@/lib/types";
 import type { Language } from "@/lib/languages";
+import { analyzeReading } from "@/lib/ai";
 import { loadData, saveData, todayKey } from "@/lib/storage";
 
 const toggle = (list: string[], id: string) =>
@@ -17,7 +18,6 @@ export function useLireData() {
     useEffect(() => {
         const data = loadData();
         // eslint-disable-next-line react-hooks/set-state-in-effect
-
         setCustomLessons(
             (data.customLessons ?? []).map((l) => ({
                 ...l,
@@ -43,22 +43,15 @@ export function useLireData() {
     }
 
     async function analyzeLesson(lesson: Lesson) {
-        updateLesson(lesson.id, { analysis: "pending" });
+        updateLesson(lesson.id, { analysis: "pending", analysisError: undefined });
         try {
-            const res = await fetch("/api/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content: lesson.content,
-                    level: lesson.level,
-                    language: lesson.language,
-                }),
+            const data = await analyzeReading(lesson.content, lesson.level, lesson.language);
+            updateLesson(lesson.id, { ...data, analysis: "ready", analysisError: undefined });
+        } catch (e) {
+            updateLesson(lesson.id, {
+                analysis: "error",
+                analysisError: e instanceof Error ? e.message : "Analysis failed",
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error ?? "Analysis failed");
-            updateLesson(lesson.id, { ...data, analysis: "ready" });
-        } catch {
-            updateLesson(lesson.id, { analysis: "error" });
         }
     }
     function toggleCompleted(id: string) {
