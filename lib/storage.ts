@@ -39,3 +39,10 @@ export function saveData(data: StoredData) {
     console.warn("Could not save LIRE data.");
   }
 }
+export function clearData() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}

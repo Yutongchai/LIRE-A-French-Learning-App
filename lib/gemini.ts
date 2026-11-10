@@ -22,7 +22,9 @@ export function setApiKey(key: string) {
   }
 }
 
-export class MissingKeyError extends Error {
+import { AccessRequiredError } from "./errors";
+
+export class MissingKeyError extends AccessRequiredError {
   constructor() {
     super("Add your Gemini API key (🔑 in the top bar) to use AI features.");
   }

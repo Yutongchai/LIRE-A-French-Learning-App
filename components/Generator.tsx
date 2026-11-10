@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { Lesson } from "@/lib/types";
 import { LANGUAGES, type Language, type Script } from "@/lib/languages";
-import { generateReading } from "@/lib/ai";
-import { MissingKeyError, getApiKey } from "@/lib/gemini";
+import { generateReading, hasAiAccess } from "@/lib/ai";
+import { AccessRequiredError } from "@/lib/errors";
 import ProgressBar from "./ProgressBar";
 
 type Props = {
@@ -31,8 +31,8 @@ export default function Generator({ language, onGenerated, onBack, onNeedKey }: 
 
     async function generate() {
         if (!topic.trim() || loading) return;
-        if (!getApiKey()) {
-            setError("Add your Gemini API key first.");
+        if (!(await hasAiAccess())) {
+            setError("Sign in (or add your API key) first.");
             onNeedKey();
             return;
         }
@@ -45,7 +45,7 @@ export default function Generator({ language, onGenerated, onBack, onNeedKey }: 
             await new Promise((r) => setTimeout(r, 600));
             onGenerated(lesson); // page then starts the analysis automatically
         } catch (e) {
-            if (e instanceof MissingKeyError) onNeedKey();
+            if (e instanceof AccessRequiredError) onNeedKey();
             setError(e instanceof Error ? e.message : "Something went wrong");
             setLoading(false);
         }

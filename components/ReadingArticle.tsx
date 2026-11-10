@@ -161,12 +161,12 @@ export default function ReadingArticle({
                                     : "No study notes yet."}
                             </span>
                             <div className="flex w-full gap-2 sm:w-auto">
-                                {status === "error" && /API key/i.test(lesson.analysisError ?? "") && (
+                                {status === "error" && /API key|Sign in/i.test(lesson.analysisError ?? "") && (
                                     <button
                                         onClick={onOpenKey}
                                         className="flex-1 rounded-lg border border-[#465642] px-4 py-2 text-[#465642] sm:flex-none"
                                     >
-                                        Set API key
+                                        {/Sign in/i.test(lesson.analysisError ?? "") ? "Sign in" : "Set API key"}
                                     </button>
                                 )}
                                 <button
