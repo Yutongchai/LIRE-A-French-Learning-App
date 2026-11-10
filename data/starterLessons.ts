@@ -3,6 +3,7 @@ import type { Lesson } from "@/lib/types";
 export const starterLessons: Lesson[] = [
   {
     id: "lesson-1",
+    language: "fr",
     title: "L'art de prendre son temps",
     category: "Vie quotidienne",
     level: "B1",
@@ -55,6 +56,7 @@ export const starterLessons: Lesson[] = [
   },
   {
     id: "lesson-2",
+    language: "fr",
     title: "Voyager seul : une expérience unique",
     category: "Voyage",
     level: "B1",

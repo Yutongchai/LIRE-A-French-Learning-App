@@ -20,8 +20,8 @@ export function useLireData() {
 
         setCustomLessons(
             (data.customLessons ?? []).map((l) => ({
-                language: "fr" as Language,
                 ...l,
+                language: l.language ?? ("fr" as Language),
                 // an analysis cut off by a refresh becomes retryable
                 analysis: l.analysis === "pending" ? ("none" as const) : l.analysis,
             }))

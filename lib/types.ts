@@ -4,7 +4,7 @@ export type Question = {
     question: string;
     options: string[];
     answer: number;
-    title: string;
+    title?: string;
 };
 
 export type VocabItem = {
@@ -12,7 +12,7 @@ export type VocabItem = {
     meaning: string;
     example: string;
     pinyin?: string;
-    title: string;
+    title?: string;
 };
 export type GrammarItem = { title: string; explanation: string; example: string };
 
