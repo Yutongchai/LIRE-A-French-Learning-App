@@ -24,11 +24,13 @@ export default function VocabularySection({ items, title }: { items: VocabItem[]
                             key={item.word}
                             className="flex flex-wrap justify-between gap-3 py-4"
                         >
-                            <div>
+                            <div className="min-w-0">
                                 <p className="font-medium">
                                     {item.word}
-                                    {item.pinyin && (
-                                        <span className="ml-2 text-sm font-normal text-[#9a7950]">{item.pinyin}</span>
+                                    {(item.reading ?? item.pinyin) && (
+                                        <span className="ml-2 text-sm font-normal text-[#9a7950]">
+                                            {item.reading ?? item.pinyin}
+                                        </span>
                                     )}
                                 </p>
                                 <p className="mt-1 text-sm italic text-[#89877e]">

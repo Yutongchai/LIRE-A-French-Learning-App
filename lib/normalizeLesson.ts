@@ -37,9 +37,23 @@ export function normalizeAnalysis(raw: any): Analysis | null {
       word: str(v?.word),
       meaning: str(v?.meaning),
       example: str(v?.example),
-      pinyin: str(v?.pinyin) || undefined,
+      reading: str(v?.reading) || str(v?.pinyin) || undefined,
     }))
     .filter((v: { word: string }) => v.word);
+
+  const seen = new Set<string>();
+  const glossary = (Array.isArray(raw?.glossary) ? raw.glossary : [])
+    .map((g: any) => ({
+      word: str(g?.word),
+      meaning: str(g?.meaning),
+      reading: str(g?.reading) || str(g?.pinyin) || undefined,
+      base: str(g?.base) || undefined,
+    }))
+    .filter((g: { word: string; meaning: string }) => {
+      if (!g.word || !g.meaning || seen.has(g.word.toLowerCase())) return false;
+      seen.add(g.word.toLowerCase());
+      return true;
+    });
 
   const grammar = (Array.isArray(raw?.grammar) ? raw.grammar : [])
     .map((g: any) => ({
@@ -70,6 +84,7 @@ export function normalizeAnalysis(raw: any): Analysis | null {
     translation,
     pinyin: str(raw?.pinyin) || undefined,
     vocabulary,
+    glossary,
     grammar,
     questions,
   };

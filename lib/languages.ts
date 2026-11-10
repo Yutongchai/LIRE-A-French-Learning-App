@@ -1,15 +1,18 @@
-export type Language = "fr" | "zh" | "ms";
+export type Language = "fr" | "zh" | "ms" | "th";
 export type Script = "traditional" | "simplified";
 
 export function parseLanguage(v: unknown): Language {
-    return v === "zh" || v === "ms" ? v : "fr";
+    return v === "zh" || v === "ms" || v === "th" ? v : "fr";
 }
 
 export const LANGUAGES: Record<
     Language,
     {
         label: string;
+        /** ISO country code used by flag-icons (fi fi-xx) */
         flag: string;
+        /** what the per-word "reading" is called in the UI */
+        readingLabel: string;
         nativeLabel: string;
         headline: string;
         tagline: string;
@@ -22,7 +25,8 @@ export const LANGUAGES: Record<
 > = {
     fr: {
         label: "French",
-        flag: "🇫🇷",
+        flag: "fr",
+        readingLabel: "Pronunciation",
         nativeLabel: "FR",
         headline: "Bonjour, lisons !",
         tagline: "Un peu de français, chaque jour.",
@@ -38,7 +42,8 @@ export const LANGUAGES: Record<
     },
     zh: {
         label: "Chinese",
-        flag: "🇨🇳",
+        flag: "cn",
+        readingLabel: "Pinyin",
         nativeLabel: "中文",
         headline: "你好，一起来读吧！",
         tagline: "每天读一点中文。",
@@ -54,7 +59,8 @@ export const LANGUAGES: Record<
     },
     ms: {
         label: "Malay",
-        flag: "🇲🇾",
+        flag: "my",
+        readingLabel: "Pronunciation",
         nativeLabel: "BM",
         headline: "Selamat datang, jom baca!",
         tagline: "Sedikit Bahasa Melayu, setiap hari.",
@@ -66,6 +72,23 @@ export const LANGUAGES: Record<
             vocab: "Perbendaharaan kata",
             grammar: "Tatabahasa",
             practice: "Soalan kefahaman",
+        },
+    },
+    th: {
+        label: "Thai",
+        flag: "th",
+        readingLabel: "Romanization",
+        nativeLabel: "ไทย",
+        headline: "สวัสดี มาอ่านกันเถอะ",
+        tagline: "อ่านภาษาไทยทีละนิด ทุกวัน",
+        levels: ["A1", "A2", "B1", "B2", "C1"],
+        defaultLevel: "A2",
+        topicPlaceholder: "e.g. street food in Bangkok, Songkran, island trip",
+        composerPlaceholder: "วางบทความภาษาไทยที่นี่...",
+        sectionTitles: {
+            vocab: "คำศัพท์สำคัญ",
+            grammar: "ไวยากรณ์",
+            practice: "ทดสอบความเข้าใจ",
         },
     },
 };
