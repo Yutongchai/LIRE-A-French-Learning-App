@@ -11,18 +11,26 @@ import Composer from "@/components/Composer";
 import Generator from "@/components/Generator";
 import ReadingArticle from "@/components/ReadingArticle";
 import ApiKeyDialog from "@/components/ApiKeyDialog";
+import SignInDialog from "@/components/SignInDialog";
+import AccountMenu from "@/components/AccountMenu";
+import { useAuth } from "@/hooks/useAuth";
+import { cloudEnabled } from "@/lib/supabase";
 
 export default function Home() {
+  const { user } = useAuth();
   const {
     customLessons,
+    sharedLessons,
     completed,
     saved,
     readLog,
+    syncError,
     addLesson,
+    addSharedLesson,
     analyzeLesson,
     toggleSaved,
     toggleCompleted,
-  } = useLireData();
+  } = useLireData(user?.id ?? null);
 
   const [language, setLanguage] = useState<Language>("fr");
   const [selectedId, setSelectedId] = useState("lesson-1");
@@ -30,23 +38,27 @@ export default function Home() {
   const [showGenerator, setShowGenerator] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
+  const [signInReason, setSignInReason] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newText, setNewText] = useState("");
 
   const cfg = LANGUAGES[language];
-  const lessons = [...starterLessons, ...customLessons].filter(
-    (l) => l.language === language
-  );
+  const seen = new Set<string>();
+  const lessons = [...starterLessons, ...customLessons, ...sharedLessons].filter((l) => {
+    if (l.language !== language || seen.has(l.id)) return false;
+    seen.add(l.id);
+    return true;
+  });
   const activeLesson = lessons.find((l) => l.id === selectedId) ?? lessons[0];
 
   const completedCount = lessons.filter((l) => completed.includes(l.id)).length;
   const savedCount = lessons.filter((l) => saved.includes(l.id)).length;
   const customCount = customLessons.filter((l) => l.language === language).length;
 
-  function addReading() {
+  async function addReading() {
     if (!newTitle.trim() || !newText.trim()) return;
 
-    const lesson: Lesson = {
+    const draft: Lesson = {
       id: `custom-${Date.now()}`,
       language,
       title: newTitle.trim(),
@@ -60,21 +72,25 @@ export default function Home() {
       questions: [],
     };
 
-    addLesson(lesson);
-    analyzeLesson(lesson);
-
-    setSelectedId(lesson.id);
-    setNewTitle("");
-    setNewText("");
-    setShowComposer(false);
+    try {
+      const lesson = await addLesson(draft); // cloud: saved first, gets its real id
+      analyzeLesson(lesson);
+      setSelectedId(lesson.id);
+      setNewTitle("");
+      setNewText("");
+      setShowComposer(false);
+    } catch {
+      alert("Could not save the reading. Check your connection and try again.");
+    }
   }
 
   function handleGenerated(lesson: Lesson) {
-    addLesson(lesson);
+    addSharedLesson(lesson);
     setSelectedId(lesson.id);
     setShowGenerator(false);
     // step 2 runs on its own: translation, vocabulary, word notes, grammar, quiz
-    analyzeLesson(lesson);
+    // (a reading someone already analyzed comes back ready and costs nothing)
+    if (lesson.analysis !== "ready") analyzeLesson(lesson);
   }
 
   function selectLesson(id: string) {
@@ -89,12 +105,19 @@ export default function Home() {
     setShowGenerator(false);
   }
 
+  function needAccess() {
+    if (cloudEnabled) setSignInReason("Sign in to generate and analyze readings.");
+    else setKeyOpen(true);
+  }
+
   function openGenerator() {
+    if (cloudEnabled && !user) return needAccess();
     setShowComposer(false);
     setShowGenerator(true);
   }
 
   function openComposer() {
+    if (cloudEnabled && !user) return needAccess();
     setShowGenerator(false);
     setShowComposer(true);
   }
@@ -135,14 +158,21 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setKeyOpen(true)}
-              aria-label="Gemini API key"
-              title="Gemini API key"
-              className="rounded-full border border-white/15 px-3 py-2 text-sm text-[#f2eee7] hover:bg-white/5"
-            >
-              🔑
-            </button>
+            {cloudEnabled ? (
+              <AccountMenu
+                user={user}
+                onSignIn={() => setSignInReason("Your progress, saved words and readings follow you on every device.")}
+              />
+            ) : (
+              <button
+                onClick={() => setKeyOpen(true)}
+                aria-label="Gemini API key"
+                title="Gemini API key"
+                className="rounded-full border border-white/15 px-3 py-2 text-sm text-[#f2eee7] hover:bg-white/5"
+              >
+                🔑
+              </button>
+            )}
             <button
               onClick={() => setLibraryOpen(true)}
               className="rounded-full border border-white/15 px-4 py-2 text-sm text-[#f2eee7] lg:hidden"
@@ -166,7 +196,7 @@ export default function Home() {
               language={language}
               onGenerated={handleGenerated}
               onBack={() => setShowGenerator(false)}
-              onNeedKey={() => setKeyOpen(true)}
+              onNeedKey={needAccess}
             />
           ) : showComposer ? (
             <Composer
@@ -218,7 +248,7 @@ export default function Home() {
                   isCompleted={completed.includes(activeLesson.id)}
                   onToggleSaved={() => toggleSaved(activeLesson.id)}
                   onAnalyze={() => analyzeLesson(activeLesson)}
-                  onOpenKey={() => setKeyOpen(true)}
+                  onOpenKey={needAccess}
                   onToggleCompleted={() => toggleCompleted(activeLesson.id)}
                 />
               ) : (
@@ -237,6 +267,14 @@ export default function Home() {
         </section>
       </div>
 
+      {signInReason && user === null && (
+        <SignInDialog reason={signInReason} onClose={() => setSignInReason(null)} />
+      )}
+      {syncError && (
+        <div className="fixed inset-x-4 bottom-4 z-50 rounded-lg bg-[#5a2f2f] px-4 py-3 text-sm text-white sm:left-auto sm:max-w-sm">
+          {syncError}
+        </div>
+      )}
       {keyOpen && <ApiKeyDialog onClose={() => setKeyOpen(false)} />}
 
       {/* Phone library bottom sheet */}

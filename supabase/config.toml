@@ -1,0 +1,5 @@
+# Minimal config so `supabase functions deploy ai` works from the repo root.
+project_id = "lire"
+
+[functions.ai]
+verify_jwt = false   # we verify the user ourselves (allows clean error messages)
